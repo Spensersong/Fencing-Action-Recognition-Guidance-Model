@@ -1,0 +1,1630 @@
+import os
+import cv2
+import csv
+import math
+import time
+import numpy as np
+import mediapipe as mp
+from datetime import datetime
+
+# ============================================================
+# 可选：YOLO
+# best.pt 用于剑结构检测
+# ============================================================
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except ImportError:
+    YOLO_AVAILABLE = False
+
+
+# ============================================================
+# 1. 基础配置
+# ============================================================
+
+CONFIG = {
+    # 摄像头
+    "camera_id": 0,
+    "camera_width": 1280,
+    "camera_height": 720,
+
+    # MediaPipe
+    "min_detection_confidence": 0.5,
+    "min_tracking_confidence": 0.5,
+
+    # YOLO
+    "yolo_confidence": 0.35,
+
+    # 连续帧平滑
+    "history_size": 7,
+
+    # 数据采样
+    "save_interval": 0.10,
+
+    # 训练时长
+    "recommended_min_seconds": 180,
+    "recommended_max_seconds": 240,
+}
+
+
+# ============================================================
+# 2. 文件路径
+# ============================================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "best.pt")
+
+
+# ============================================================
+# 3. MediaPipe 初始化
+# ============================================================
+
+mp_pose = mp.solutions.pose
+mp_draw = mp.solutions.drawing_utils
+
+pose = mp_pose.Pose(
+    static_image_mode=False,
+    model_complexity=1,
+    smooth_landmarks=True,
+    enable_segmentation=False,
+    min_detection_confidence=CONFIG["min_detection_confidence"],
+    min_tracking_confidence=CONFIG["min_tracking_confidence"]
+)
+
+
+# ============================================================
+# 4. YOLO 剑结构模型
+# ============================================================
+
+model = None
+
+if YOLO_AVAILABLE:
+    if os.path.exists(MODEL_PATH):
+        try:
+            model = YOLO(MODEL_PATH)
+            print("==========================================")
+            print("剑结构模型加载成功")
+            print("模型：", MODEL_PATH)
+            print("==========================================")
+        except Exception as e:
+            print("⚠️ best.pt 加载失败：", e)
+            model = None
+    else:
+        print("⚠️ 未找到 best.pt")
+        print("程序仍可运行人体姿态分析。")
+else:
+    print("⚠️ 当前环境没有安装 ultralytics")
+    print("程序将仅运行 MediaPipe 人体分析。")
+
+
+# ============================================================
+# 5. 工具函数
+# ============================================================
+
+def calculate_distance(p1, p2):
+    """计算两个归一化关键点之间的二维距离"""
+    if p1 is None or p2 is None:
+        return None
+
+    return math.sqrt(
+        (p1.x - p2.x) ** 2 +
+        (p1.y - p2.y) ** 2
+    )
+
+
+def calculate_angle(a, b, c):
+    """
+    计算 ABC 角度
+    a、b、c 为 MediaPipe landmark
+    b 为顶点
+    """
+
+    if a is None or b is None or c is None:
+        return None
+
+    ba = np.array([
+        a.x - b.x,
+        a.y - b.y
+    ])
+
+    bc = np.array([
+        c.x - b.x,
+        c.y - b.y
+    ])
+
+    norm_ba = np.linalg.norm(ba)
+    norm_bc = np.linalg.norm(bc)
+
+    if norm_ba == 0 or norm_bc == 0:
+        return None
+
+    cosine = np.dot(ba, bc) / (norm_ba * norm_bc)
+    cosine = np.clip(cosine, -1.0, 1.0)
+
+    angle = math.degrees(math.acos(cosine))
+
+    return angle
+
+
+def calculate_midpoint(p1, p2):
+    """两个关键点中点"""
+    if p1 is None or p2 is None:
+        return None
+
+    return {
+        "x": (p1.x + p2.x) / 2,
+        "y": (p1.y + p2.y) / 2
+    }
+
+
+def calculate_trunk_angle(left_shoulder, right_shoulder,
+                          left_hip, right_hip):
+
+    shoulder = calculate_midpoint(
+        left_shoulder,
+        right_shoulder
+    )
+
+    hip = calculate_midpoint(
+        left_hip,
+        right_hip
+    )
+
+    if shoulder is None or hip is None:
+        return None
+
+    dx = shoulder["x"] - hip["x"]
+    dy = shoulder["y"] - hip["y"]
+
+    # 图像坐标 y 向下，因此这里计算相对于竖直方向的角度
+    angle = math.degrees(math.atan2(abs(dx), abs(dy)))
+
+    return angle
+
+
+def clamp(value, min_value, max_value):
+    return max(min_value, min(max_value, value))
+
+
+# ============================================================
+# 6. 剑结构检测
+# ============================================================
+
+def detect_sword(frame):
+    """
+    使用 best.pt 检测剑结构。
+
+    注意：
+    这里只负责检测/显示剑的结构位置，
+    不根据剑的位置生成攻击动作建议。
+    """
+
+    if model is None:
+        return None, None
+
+    try:
+        results = model(
+            frame,
+            conf=CONFIG["yolo_confidence"],
+            verbose=False
+        )
+
+        if not results:
+            return None, None
+
+        result = results[0]
+
+        best_center = None
+        best_mask = None
+        best_area = 0
+
+        # ----------------------------------------------------
+        # 优先处理 segmentation mask
+        # ----------------------------------------------------
+        if result.masks is not None:
+
+            masks = result.masks.data
+
+            for mask in masks:
+
+                mask_np = mask.detach().cpu().numpy()
+
+                mask_np = cv2.resize(
+                    mask_np,
+                    (frame.shape[1], frame.shape[0])
+                )
+
+                binary_mask = (
+                    mask_np > 0.5
+                ).astype(np.uint8) * 255
+
+                area = cv2.countNonZero(binary_mask)
+
+                if area < best_area:
+                    continue
+
+                contours, _ = cv2.findContours(
+                    binary_mask,
+                    cv2.RETR_EXTERNAL,
+                    cv2.CHAIN_APPROX_SIMPLE
+                )
+
+                if not contours:
+                    continue
+
+                contour = max(
+                    contours,
+                    key=cv2.contourArea
+                )
+
+                contour_area = cv2.contourArea(contour)
+
+                if contour_area <= 0:
+                    continue
+
+                M = cv2.moments(contour)
+
+                if M["m00"] == 0:
+                    continue
+
+                cx = M["m10"] / M["m00"]
+                cy = M["m01"] / M["m00"]
+
+                best_center = (
+                    cx / frame.shape[1],
+                    cy / frame.shape[0]
+                )
+
+                best_mask = contour
+                best_area = area
+
+        # ----------------------------------------------------
+        # 如果没有 segmentation，则使用 bounding box
+        # ----------------------------------------------------
+        elif result.boxes is not None:
+
+            boxes = result.boxes
+
+            if len(boxes) > 0:
+
+                best_index = None
+                best_conf = 0
+
+                for i in range(len(boxes)):
+
+                    conf = float(
+                        boxes.conf[i].detach().cpu().item()
+                    )
+
+                    if conf > best_conf:
+                        best_conf = conf
+                        best_index = i
+
+                if best_index is not None:
+
+                    box = boxes.xyxy[
+                        best_index
+                    ].detach().cpu().numpy()
+
+                    x1, y1, x2, y2 = box
+
+                    cx = (x1 + x2) / 2
+                    cy = (y1 + y2) / 2
+
+                    best_center = (
+                        cx / frame.shape[1],
+                        cy / frame.shape[0]
+                    )
+
+                    best_mask = (
+                        int(x1),
+                        int(y1),
+                        int(x2),
+                        int(y2)
+                    )
+
+        return best_center, best_mask
+
+    except Exception as e:
+        print("剑模型检测错误：", e)
+        return None, None
+
+
+def draw_sword_result(frame, sword_center, sword_result):
+    """在画面上显示剑检测结果"""
+
+    if sword_result is None:
+        return
+
+    # segmentation contour
+    if isinstance(sword_result, np.ndarray):
+
+        cv2.drawContours(
+            frame,
+            [sword_result],
+            -1,
+            (0, 255, 0),
+            2
+        )
+
+    # bounding box
+    elif isinstance(sword_result, tuple) and len(sword_result) == 4:
+
+        x1, y1, x2, y2 = sword_result
+
+        cv2.rectangle(
+            frame,
+            (x1, y1),
+            (x2, y2),
+            (0, 255, 0),
+            2
+        )
+
+    if sword_center is not None:
+
+        x = int(
+            sword_center[0] * frame.shape[1]
+        )
+
+        y = int(
+            sword_center[1] * frame.shape[0]
+        )
+
+        cv2.circle(
+            frame,
+            (x, y),
+            7,
+            (0, 255, 255),
+            -1
+        )
+
+        cv2.putText(
+            frame,
+            "Sword",
+            (x + 10, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 255, 255),
+            2
+        )
+
+
+# ============================================================
+# 7. 人体运动学分析
+# ============================================================
+
+def analyze_pose(landmarks):
+    """
+    从 MediaPipe 关键点中提取运动学指标。
+
+    不依赖固定的画面像素，而使用：
+    - 关节角度
+    - 身体相对距离
+    - 躯干倾角
+    """
+
+    if landmarks is None:
+        return None
+
+    # --------------------------------------------------------
+    # 关键点
+    # --------------------------------------------------------
+
+    left_shoulder = landmarks[11]
+    right_shoulder = landmarks[12]
+
+    left_elbow = landmarks[13]
+    right_elbow = landmarks[14]
+
+    left_wrist = landmarks[15]
+    right_wrist = landmarks[16]
+
+    left_hip = landmarks[23]
+    right_hip = landmarks[24]
+
+    left_knee = landmarks[25]
+    right_knee = landmarks[26]
+
+    left_ankle = landmarks[27]
+    right_ankle = landmarks[28]
+
+    # --------------------------------------------------------
+    # 膝关节角
+    # --------------------------------------------------------
+
+    left_knee_angle = calculate_angle(
+        left_hip,
+        left_knee,
+        left_ankle
+    )
+
+    right_knee_angle = calculate_angle(
+        right_hip,
+        right_knee,
+        right_ankle
+    )
+
+    # --------------------------------------------------------
+    # 肘关节角
+    # --------------------------------------------------------
+
+    left_elbow_angle = calculate_angle(
+        left_shoulder,
+        left_elbow,
+        left_wrist
+    )
+
+    right_elbow_angle = calculate_angle(
+        right_shoulder,
+        right_elbow,
+        right_wrist
+    )
+
+    # --------------------------------------------------------
+    # 髋关节角
+    # --------------------------------------------------------
+
+    left_hip_angle = calculate_angle(
+        left_shoulder,
+        left_hip,
+        left_knee
+    )
+
+    right_hip_angle = calculate_angle(
+        right_shoulder,
+        right_hip,
+        right_knee
+    )
+
+    # --------------------------------------------------------
+    # 双脚距离
+    # --------------------------------------------------------
+
+    foot_distance = calculate_distance(
+        left_ankle,
+        right_ankle
+    )
+
+    # --------------------------------------------------------
+    # 双肩距离
+    # --------------------------------------------------------
+
+    shoulder_width = calculate_distance(
+        left_shoulder,
+        right_shoulder
+    )
+
+    # --------------------------------------------------------
+    # 双髋距离
+    # --------------------------------------------------------
+
+    hip_width = calculate_distance(
+        left_hip,
+        right_hip
+    )
+
+    # --------------------------------------------------------
+    # 躯干倾角
+    # --------------------------------------------------------
+
+    trunk_angle = calculate_trunk_angle(
+        left_shoulder,
+        right_shoulder,
+        left_hip,
+        right_hip
+    )
+
+    # --------------------------------------------------------
+    # 身体中心
+    # --------------------------------------------------------
+
+    shoulder_center = calculate_midpoint(
+        left_shoulder,
+        right_shoulder
+    )
+
+    hip_center = calculate_midpoint(
+        left_hip,
+        right_hip
+    )
+
+    body_center = None
+
+    if shoulder_center and hip_center:
+
+        body_center = {
+            "x": (
+                shoulder_center["x"] +
+                hip_center["x"]
+            ) / 2,
+
+            "y": (
+                shoulder_center["y"] +
+                hip_center["y"]
+            ) / 2
+        }
+
+    return {
+        "left_knee_angle": left_knee_angle,
+        "right_knee_angle": right_knee_angle,
+
+        "left_elbow_angle": left_elbow_angle,
+        "right_elbow_angle": right_elbow_angle,
+
+        "left_hip_angle": left_hip_angle,
+        "right_hip_angle": right_hip_angle,
+
+        "foot_distance": foot_distance,
+        "shoulder_width": shoulder_width,
+        "hip_width": hip_width,
+
+        "trunk_angle": trunk_angle,
+
+        "body_center": body_center
+    }
+
+
+# ============================================================
+# 8. 数据平滑
+# ============================================================
+
+class MetricSmoother:
+
+    def __init__(self, max_size=7):
+        self.max_size = max_size
+        self.history = {}
+
+    def update(self, key, value):
+
+        if value is None:
+            return None
+
+        if key not in self.history:
+            self.history[key] = []
+
+        self.history[key].append(value)
+
+        if len(self.history[key]) > self.max_size:
+            self.history[key].pop(0)
+
+        return float(
+            np.mean(self.history[key])
+        )
+
+    def clear(self):
+        self.history.clear()
+
+
+# ============================================================
+# 9. 训练状态判断
+# ============================================================
+
+def classify_training_state(metrics, previous_metrics):
+    """
+    判断当前身体运动状态。
+
+    这里只用于训练状态统计，不输出武器使用建议。
+    """
+
+    if metrics is None:
+        return "未检测到人体"
+
+    if previous_metrics is None:
+        return "准备"
+
+    current_center = metrics.get("body_center")
+    previous_center = previous_metrics.get("body_center")
+
+    if current_center is None or previous_center is None:
+        return "准备"
+
+    dx = abs(
+        current_center["x"] -
+        previous_center["x"]
+    )
+
+    dy = abs(
+        current_center["y"] -
+        previous_center["y"]
+    )
+
+    movement = math.sqrt(
+        dx * dx +
+        dy * dy
+    )
+
+    trunk = metrics.get("trunk_angle")
+
+    if movement > 0.018:
+        return "移动"
+
+    if trunk is not None and trunk > 15:
+        return "姿态变化"
+
+    return "稳定"
+
+
+# ============================================================
+# 10. 姿态稳定性分析
+# ============================================================
+
+def evaluate_posture(metrics):
+
+    if metrics is None:
+        return {
+            "score": 0,
+            "messages": ["未检测到完整人体姿态"]
+        }
+
+    score = 100
+    messages = []
+
+    left_knee = metrics["left_knee_angle"]
+    right_knee = metrics["right_knee_angle"]
+
+    left_hip = metrics["left_hip_angle"]
+    right_hip = metrics["right_hip_angle"]
+
+    trunk = metrics["trunk_angle"]
+
+    # --------------------------------------------------------
+    # 膝关节
+    # --------------------------------------------------------
+
+    knee_values = [
+        x for x in [left_knee, right_knee]
+        if x is not None
+    ]
+
+    if knee_values:
+
+        avg_knee = sum(knee_values) / len(knee_values)
+
+        if avg_knee < 110:
+            score -= 5
+            messages.append("下肢屈曲幅度较大")
+
+        elif avg_knee > 175:
+            score -= 5
+            messages.append("下肢较为伸直")
+
+    # --------------------------------------------------------
+    # 髋关节
+    # --------------------------------------------------------
+
+    hip_values = [
+        x for x in [left_hip, right_hip]
+        if x is not None
+    ]
+
+    if hip_values:
+
+        avg_hip = sum(hip_values) / len(hip_values)
+
+        if avg_hip < 45:
+            score -= 5
+            messages.append("髋部姿态变化较明显")
+
+    # --------------------------------------------------------
+    # 躯干
+    # --------------------------------------------------------
+
+    if trunk is not None:
+
+        if trunk > 25:
+            score -= 10
+            messages.append("躯干倾斜较明显")
+
+    # --------------------------------------------------------
+    # 左右膝差异
+    # --------------------------------------------------------
+
+    if left_knee is not None and right_knee is not None:
+
+        knee_difference = abs(
+            left_knee -
+            right_knee
+        )
+
+        if knee_difference > 45:
+            score -= 5
+            messages.append("左右腿姿态差异较大")
+
+    score = clamp(score, 0, 100)
+
+    if not messages:
+        messages.append("当前姿态较稳定")
+
+    return {
+        "score": score,
+        "messages": messages
+    }
+
+
+# ============================================================
+# 11. 数据记录器
+# ============================================================
+
+class TrainingRecorder:
+
+    def __init__(self):
+        self.records = []
+        self.last_save_time = 0
+
+    def add(
+        self,
+        timestamp,
+        elapsed,
+        state,
+        metrics,
+        posture_score,
+        sword_detected
+    ):
+
+        now = time.time()
+
+        if now - self.last_save_time < CONFIG["save_interval"]:
+            return
+
+        self.last_save_time = now
+
+        if metrics is None:
+            return
+
+        body_center = metrics.get(
+            "body_center"
+        )
+
+        self.records.append({
+            "timestamp": timestamp,
+            "elapsed": round(elapsed, 2),
+
+            "state": state,
+
+            "left_knee_angle": metrics.get(
+                "left_knee_angle"
+            ),
+
+            "right_knee_angle": metrics.get(
+                "right_knee_angle"
+            ),
+
+            "left_elbow_angle": metrics.get(
+                "left_elbow_angle"
+            ),
+
+            "right_elbow_angle": metrics.get(
+                "right_elbow_angle"
+            ),
+
+            "left_hip_angle": metrics.get(
+                "left_hip_angle"
+            ),
+
+            "right_hip_angle": metrics.get(
+                "right_hip_angle"
+            ),
+
+            "foot_distance": metrics.get(
+                "foot_distance"
+            ),
+
+            "trunk_angle": metrics.get(
+                "trunk_angle"
+            ),
+
+            "body_x":
+                body_center["x"]
+                if body_center else None,
+
+            "body_y":
+                body_center["y"]
+                if body_center else None,
+
+            "posture_score": posture_score,
+
+            "sword_detected":
+                1 if sword_detected else 0
+        })
+
+    def clear(self):
+        self.records = []
+        self.last_save_time = 0
+
+
+# ============================================================
+# 12. 生成训练报告
+# ============================================================
+
+def generate_report(records, total_time):
+
+    if not records:
+        return "暂无训练数据。"
+
+    minutes = int(total_time // 60)
+    seconds = int(total_time % 60)
+
+    # --------------------------------------------------------
+    # 有效姿态数据
+    # --------------------------------------------------------
+
+    posture_scores = [
+        r["posture_score"]
+        for r in records
+        if r["posture_score"] is not None
+    ]
+
+    if posture_scores:
+        avg_posture_score = np.mean(
+            posture_scores
+        )
+    else:
+        avg_posture_score = 0
+
+    # --------------------------------------------------------
+    # 状态统计
+    # --------------------------------------------------------
+
+    state_count = {}
+
+    for r in records:
+
+        state = r["state"]
+
+        state_count[state] = (
+            state_count.get(state, 0) + 1
+        )
+
+    total_state_count = sum(
+        state_count.values()
+    )
+
+    # --------------------------------------------------------
+    # 剑检测率
+    # --------------------------------------------------------
+
+    sword_count = sum(
+        r["sword_detected"]
+        for r in records
+    )
+
+    sword_rate = (
+        sword_count / len(records) * 100
+        if records else 0
+    )
+
+    # --------------------------------------------------------
+    # 膝角
+    # --------------------------------------------------------
+
+    left_knees = [
+        r["left_knee_angle"]
+        for r in records
+        if r["left_knee_angle"] is not None
+    ]
+
+    right_knees = [
+        r["right_knee_angle"]
+        for r in records
+        if r["right_knee_angle"] is not None
+    ]
+
+    # --------------------------------------------------------
+    # 躯干
+    # --------------------------------------------------------
+
+    trunk_angles = [
+        r["trunk_angle"]
+        for r in records
+        if r["trunk_angle"] is not None
+    ]
+
+    # --------------------------------------------------------
+    # 报告
+    # --------------------------------------------------------
+
+    lines = []
+
+    lines.append("=" * 60)
+    lines.append("              击剑运动训练分析报告")
+    lines.append("=" * 60)
+
+    lines.append("")
+    lines.append(
+        f"训练时间：{minutes} 分 {seconds} 秒"
+    )
+
+    lines.append(
+        f"有效分析帧数：{len(records)}"
+    )
+
+    lines.append("")
+
+    lines.append("【一、人体姿态分析】")
+
+    lines.append(
+        f"平均姿态稳定评分："
+        f"{avg_posture_score:.1f} / 100"
+    )
+
+    if left_knees:
+        lines.append(
+            f"左膝平均角度："
+            f"{np.mean(left_knees):.1f}°"
+        )
+
+    if right_knees:
+        lines.append(
+            f"右膝平均角度："
+            f"{np.mean(right_knees):.1f}°"
+        )
+
+    if trunk_angles:
+        lines.append(
+            f"平均躯干倾角："
+            f"{np.mean(trunk_angles):.1f}°"
+        )
+
+    lines.append("")
+
+    lines.append("【二、训练状态】")
+
+    for state, count in sorted(
+        state_count.items(),
+        key=lambda x: x[1],
+        reverse=True
+    ):
+
+        if total_state_count > 0:
+            percentage = (
+                count /
+                total_state_count *
+                100
+            )
+        else:
+            percentage = 0
+
+        lines.append(
+            f"{state}："
+            f"{percentage:.1f}%"
+        )
+
+    lines.append("")
+
+    lines.append("【三、剑结构检测】")
+
+    lines.append(
+        f"剑结构检测覆盖率："
+        f"{sword_rate:.1f}%"
+    )
+
+    lines.append(
+        "注：剑模型用于画面中的剑结构检测与可视化，"
+        "人体训练分析主要依据 MediaPipe 姿态关键点。"
+    )
+
+    lines.append("")
+
+    lines.append("【四、训练观察】")
+
+    if avg_posture_score >= 90:
+        lines.append(
+            "整体人体姿态在本次训练中保持较稳定。"
+        )
+
+    elif avg_posture_score >= 75:
+        lines.append(
+            "整体人体姿态基本稳定，"
+            "训练过程中存在一定姿态波动。"
+        )
+
+    else:
+        lines.append(
+            "训练过程中人体姿态变化较明显，"
+            "建议结合训练视频进一步观察。"
+        )
+
+    if trunk_angles:
+
+        avg_trunk = np.mean(trunk_angles)
+
+        if avg_trunk > 20:
+            lines.append(
+                "记录到较明显的躯干倾斜变化。"
+            )
+
+    lines.append("")
+
+    lines.append("=" * 60)
+
+    return "\n".join(lines)
+
+
+# ============================================================
+# 13. 保存 CSV
+# ============================================================
+
+def save_csv(records):
+
+    if not records:
+        print("⚠️ 没有可保存的数据")
+        return None
+
+    timestamp = datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
+
+    filename = os.path.join(
+        BASE_DIR,
+        f"training_data_{timestamp}.csv"
+    )
+
+    fieldnames = list(
+        records[0].keys()
+    )
+
+    try:
+
+        with open(
+            filename,
+            "w",
+            newline="",
+            encoding="utf-8-sig"
+        ) as f:
+
+            writer = csv.DictWriter(
+                f,
+                fieldnames=fieldnames
+            )
+
+            writer.writeheader()
+
+            writer.writerows(records)
+
+        print(
+            f"✅ CSV 数据已保存：{filename}"
+        )
+
+        return filename
+
+    except Exception as e:
+
+        print(
+            "❌ CSV 保存失败：",
+            e
+        )
+
+        return None
+
+
+# ============================================================
+# 14. 保存 TXT 报告
+# ============================================================
+
+def save_report(report):
+
+    timestamp = datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
+
+    filename = os.path.join(
+        BASE_DIR,
+        f"training_report_{timestamp}.txt"
+    )
+
+    try:
+
+        with open(
+            filename,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            f.write(report)
+
+        print(
+            f"✅ 报告已保存：{filename}"
+        )
+
+        return filename
+
+    except Exception as e:
+
+        print(
+            "❌ 报告保存失败：",
+            e
+        )
+
+        return None
+
+
+# ============================================================
+# 15. 画面 UI
+# ============================================================
+
+def draw_ui(
+    frame,
+    elapsed,
+    state,
+    posture_score,
+    sword_detected
+):
+
+    # --------------------------------------------------------
+    # 半透明信息框
+    # --------------------------------------------------------
+
+    overlay = frame.copy()
+
+    cv2.rectangle(
+        overlay,
+        (20, 20),
+        (430, 205),
+        (0, 0, 0),
+        -1
+    )
+
+    frame[:] = cv2.addWeighted(
+        overlay,
+        0.55,
+        frame,
+        0.45,
+        0
+    )
+
+    # --------------------------------------------------------
+    # 标题
+    # --------------------------------------------------------
+
+    cv2.putText(
+        frame,
+        "Fencing Motion Analysis",
+        (40, 55),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (255, 255, 255),
+        2
+    )
+
+    # --------------------------------------------------------
+    # 时间
+    # --------------------------------------------------------
+
+    minutes = int(elapsed // 60)
+    seconds = int(elapsed % 60)
+
+    cv2.putText(
+        frame,
+        f"Time: {minutes}:{seconds:02d}",
+        (40, 90),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        (255, 255, 255),
+        2
+    )
+
+    # --------------------------------------------------------
+    # 状态
+    # --------------------------------------------------------
+
+    cv2.putText(
+        frame,
+        f"State: {state}",
+        (40, 125),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        (0, 255, 255),
+        2
+    )
+
+    # --------------------------------------------------------
+    # 姿态评分
+    # --------------------------------------------------------
+
+    cv2.putText(
+        frame,
+        f"Posture: {posture_score:.1f}",
+        (40, 160),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        (0, 255, 0),
+        2
+    )
+
+    # --------------------------------------------------------
+    # 剑检测
+    # --------------------------------------------------------
+
+    sword_text = (
+        "Sword: DETECTED"
+        if sword_detected
+        else "Sword: --"
+    )
+
+    cv2.putText(
+        frame,
+        sword_text,
+        (40, 195),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.55,
+        (255, 255, 0),
+        2
+    )
+
+
+# ============================================================
+# 16. 主程序
+# ============================================================
+
+def main():
+
+    print("")
+    print("=" * 60)
+    print("              击剑运动分析系统")
+    print("=" * 60)
+    print("")
+    print("功能：")
+    print("  1. MediaPipe 人体姿态分析")
+    print("  2. best.pt 剑结构检测")
+    print("  3. 关节角度分析")
+    print("  4. 躯干姿态分析")
+    print("  5. 下肢运动分析")
+    print("  6. 训练数据记录")
+    print("  7. 自动生成训练报告")
+    print("")
+    print("操作：")
+    print("  ESC = 退出")
+    print("  R   = 重置本次训练")
+    print("  S   = 保存当前报告和 CSV")
+    print("")
+    print("=" * 60)
+
+    # --------------------------------------------------------
+    # 摄像头
+    # --------------------------------------------------------
+
+    cap = cv2.VideoCapture(
+        CONFIG["camera_id"]
+    )
+
+    cap.set(
+        cv2.CAP_PROP_FRAME_WIDTH,
+        CONFIG["camera_width"]
+    )
+
+    cap.set(
+        cv2.CAP_PROP_FRAME_HEIGHT,
+        CONFIG["camera_height"]
+    )
+
+    if not cap.isOpened():
+
+        print(
+            "❌ 摄像头打开失败"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # 状态
+    # --------------------------------------------------------
+
+    smoother = MetricSmoother(
+        CONFIG["history_size"]
+    )
+
+    recorder = TrainingRecorder()
+
+    total_start_time = time.time()
+
+    previous_metrics = None
+
+    last_posture_score = 100
+
+    # --------------------------------------------------------
+    # 主循环
+    # --------------------------------------------------------
+
+    while cap.isOpened():
+
+        ret, frame = cap.read()
+
+        if not ret:
+
+            print(
+                "⚠️ 摄像头无法读取画面"
+            )
+
+            break
+
+        # ----------------------------------------------------
+        # 镜像
+        # ----------------------------------------------------
+
+        frame = cv2.flip(
+            frame,
+            1
+        )
+
+        # ----------------------------------------------------
+        # 剑检测
+        # ----------------------------------------------------
+
+        sword_center, sword_result = (
+            detect_sword(frame)
+        )
+
+        draw_sword_result(
+            frame,
+            sword_center,
+            sword_result
+        )
+
+        # ----------------------------------------------------
+        # MediaPipe
+        # ----------------------------------------------------
+
+        rgb = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2RGB
+        )
+
+        pose_results = pose.process(
+            rgb
+        )
+
+        landmarks = None
+
+        if pose_results.pose_landmarks:
+
+            mp_draw.draw_landmarks(
+                frame,
+                pose_results.pose_landmarks,
+                mp_pose.POSE_CONNECTIONS
+            )
+
+            landmarks = (
+                pose_results.pose_landmarks.landmark
+            )
+
+        # ----------------------------------------------------
+        # 人体运动学
+        # ----------------------------------------------------
+
+        metrics = analyze_pose(
+            landmarks
+        )
+
+        # ----------------------------------------------------
+        # 平滑关键指标
+        # ----------------------------------------------------
+
+        if metrics is not None:
+
+            metrics["left_knee_angle"] = smoother.update(
+                "left_knee",
+                metrics["left_knee_angle"]
+            )
+
+            metrics["right_knee_angle"] = smoother.update(
+                "right_knee",
+                metrics["right_knee_angle"]
+            )
+
+            metrics["left_elbow_angle"] = smoother.update(
+                "left_elbow",
+                metrics["left_elbow_angle"]
+            )
+
+            metrics["right_elbow_angle"] = smoother.update(
+                "right_elbow",
+                metrics["right_elbow_angle"]
+            )
+
+            metrics["left_hip_angle"] = smoother.update(
+                "left_hip",
+                metrics["left_hip_angle"]
+            )
+
+            metrics["right_hip_angle"] = smoother.update(
+                "right_hip",
+                metrics["right_hip_angle"]
+            )
+
+            metrics["trunk_angle"] = smoother.update(
+                "trunk",
+                metrics["trunk_angle"]
+            )
+
+        # ----------------------------------------------------
+        # 训练状态
+        # ----------------------------------------------------
+
+        state = classify_training_state(
+            metrics,
+            previous_metrics
+        )
+
+        # ----------------------------------------------------
+        # 姿态评价
+        # ----------------------------------------------------
+
+        posture_result = evaluate_posture(
+            metrics
+        )
+
+        last_posture_score = (
+            posture_result["score"]
+        )
+
+        # ----------------------------------------------------
+        # 时间
+        # ----------------------------------------------------
+
+        elapsed = (
+            time.time() -
+            total_start_time
+        )
+
+        # ----------------------------------------------------
+        # 数据记录
+        # ----------------------------------------------------
+
+        recorder.add(
+            datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            )[:-3],
+
+            elapsed,
+
+            state,
+
+            metrics,
+
+            last_posture_score,
+
+            sword_center is not None
+        )
+
+        # ----------------------------------------------------
+        # 保存当前指标用于下一帧
+        # ----------------------------------------------------
+
+        if metrics is not None:
+
+            previous_metrics = metrics
+
+        # ----------------------------------------------------
+        # UI
+        # ----------------------------------------------------
+
+        draw_ui(
+            frame,
+            elapsed,
+            state,
+            last_posture_score,
+            sword_center is not None
+        )
+
+        # ----------------------------------------------------
+        # 显示
+        # ----------------------------------------------------
+
+        cv2.imshow(
+            "Fencing Motion Analysis",
+            frame
+        )
+
+        # ----------------------------------------------------
+        # 键盘
+        # ----------------------------------------------------
+
+        key = cv2.waitKey(1) & 0xFF
+
+        # ESC
+        if key == 27:
+
+            break
+
+        # R
+        elif key in (
+            ord("r"),
+            ord("R")
+        ):
+
+            recorder.clear()
+            smoother.clear()
+
+            total_start_time = time.time()
+
+            previous_metrics = None
+
+            last_posture_score = 100
+
+            print("")
+            print(
+                "🔄 本次训练数据已经重置"
+            )
+
+        # S
+        elif key in (
+            ord("s"),
+            ord("S")
+        ):
+
+            if recorder.records:
+
+                total_time = (
+                    time.time() -
+                    total_start_time
+                )
+
+                report = generate_report(
+                    recorder.records,
+                    total_time
+                )
+
+                print("")
+                print(report)
+                print("")
+
+                save_report(
+                    report
+                )
+
+                save_csv(
+                    recorder.records
+                )
+
+            else:
+
+                print(
+                    "⚠️ 当前没有训练数据"
+                )
+
+    # ========================================================
+    # 退出
+    # ========================================================
+
+    total_time = (
+        time.time() -
+        total_start_time
+    )
+
+    if recorder.records:
+
+        report = generate_report(
+            recorder.records,
+            total_time
+        )
+
+        print("")
+        print(report)
+        print("")
+
+        save_report(
+            report
+        )
+
+        save_csv(
+            recorder.records
+        )
+
+    cap.release()
+
+    cv2.destroyAllWindows()
+
+    pose.close()
+
+    print("")
+    print("=" * 60)
+    print("程序结束")
+    print("=" * 60)
+
+
+# ============================================================
+# 程序入口
+# ============================================================
+
+if __name__ == "__main__":
+    main()
