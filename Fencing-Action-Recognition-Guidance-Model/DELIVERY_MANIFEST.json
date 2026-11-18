@@ -1,0 +1,207 @@
+{
+  "software": "Fencing Evidence Coach",
+  "version": "0.1.0",
+  "date": "2026-11-18",
+  "files": {
+    ".github/workflows/tests.yml": {
+      "bytes": 491,
+      "sha256": "135cb6f5dd9383a804c592b48646dbc7a6a5ef64ce3742232164c92af1e80287"
+    },
+    ".gitignore": {
+      "bytes": 121,
+      "sha256": "7fc820527b7dc76f17b5e961d03ac3d94c60f92cb29298e728c3e07afcad7e71"
+    },
+    ".streamlit/config.toml": {
+      "bytes": 206,
+      "sha256": "74eb64fc862a9b4556f6cd89b2c1f3f0f61e738d128d7fd4f41543dfa92f752c"
+    },
+    "README.md": {
+      "bytes": 10325,
+      "sha256": "b419b922c3725aedf1a8645d7e250adb3f754f48dd2c7dbab1aa02fba748a1d1"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "bytes": 2251,
+      "sha256": "ad03650bfb6c5f33e9efca2f5ad926de51a5e2115f4dc685caa4e2b6b8b1d2e2"
+    },
+    "app.py": {
+      "bytes": 7816,
+      "sha256": "791df8d61a4f9ea4cee947590e9a941c9da2c2928b0e864d54530bf571c2c21f"
+    },
+    "best(1).pt": {
+      "bytes": 6772980,
+      "sha256": "56822aa204bf1b2a36b4904a11c1c8d1dfa1483d4e4a7800cc4f9be55a1b34e4"
+    },
+    "docs/METHOD.md": {
+      "bytes": 10898,
+      "sha256": "efd73fa1900f827242b1af023930f18f94d4a09c65e9df2f780969eaedd7601d"
+    },
+    "docs/PROJECT_GUIDE.md": {
+      "bytes": 5257,
+      "sha256": "502cd62b577a06c0f46990a572282752084ef32b518f9dd71e0870c157ea2052"
+    },
+    "docs/VALIDATION.md": {
+      "bytes": 5300,
+      "sha256": "13d81e2357eb9e8ff66a3f5cf45c2339db36b4d5ffd71be295c3b3ec6e591ba4"
+    },
+    "docs/VERIFICATION_RESULTS.md": {
+      "bytes": 3838,
+      "sha256": "a97175377d376bc339f2199bd89730785525d6c83c62e11deb69b95ba8795b1e"
+    },
+    "examples/Fencing_Coaching_Report_Example.pdf": {
+      "bytes": 56586,
+      "sha256": "1e1b721cc2b22c5f8349e383504a1aefe30464e81e94e2968f59bfb6666cb4ea"
+    },
+    "examples/README.md": {
+      "bytes": 1153,
+      "sha256": "09c59a2d241fc9107a6c2bf26515aea14bc3590763b9d8a82c42f893ee3112de"
+    },
+    "examples/frontal_view/analysis.json": {
+      "bytes": 16780,
+      "sha256": "8666a846db937b3e1c13e540f04c0c7cfeb107da2dac447c8617879ed1fdca91"
+    },
+    "examples/frontal_view/coaching_report.pdf": {
+      "bytes": 57548,
+      "sha256": "7792cb70f3ac057115c3b460943b15037ffde19169dc84cb15d9c6478e61de38"
+    },
+    "examples/frontal_view/landmarks.json": {
+      "bytes": 531862,
+      "sha256": "ff4b6ed37d1a53d1cc8d0db2bc71c0c24c942d7c6997f49b118979b6fef1fcad"
+    },
+    "examples/frontal_view/measurements.csv": {
+      "bytes": 24955,
+      "sha256": "b724715dc4139d99cedb55532e3126ae8bb33e005138da8efb789a66fbd2d6e9"
+    },
+    "examples/side_view/analysis.json": {
+      "bytes": 16302,
+      "sha256": "94e942944dd7470edbbbbfb85ddb6b3a2f7ccadff1ac757d4041d27fd6b9d119"
+    },
+    "examples/side_view/coaching_report.pdf": {
+      "bytes": 56586,
+      "sha256": "1e1b721cc2b22c5f8349e383504a1aefe30464e81e94e2968f59bfb6666cb4ea"
+    },
+    "examples/side_view/landmarks.json": {
+      "bytes": 466789,
+      "sha256": "5164fccc7f0be1a9d72dc7854ee5031e3a0318b26378e989544fc39212a2ad7b"
+    },
+    "examples/side_view/measurements.csv": {
+      "bytes": 26473,
+      "sha256": "8df5b9b922695e05e4efbc0f4f9494bffc2b35c121e9ab5c9d259e143a1921ec"
+    },
+    "fencing_coach/__init__.py": {
+      "bytes": 108,
+      "sha256": "9c469d436bb5aaeb9320fbaa5fa2f9d2320e742c68a5eee3c9e9626b1e1f00a2"
+    },
+    "fencing_coach/analysis.py": {
+      "bytes": 2810,
+      "sha256": "d89ee4d4f23bd286afa702778d9f12d0b8c8e75fb42a227749198965184cd8cf"
+    },
+    "fencing_coach/cli.py": {
+      "bytes": 4214,
+      "sha256": "dea663643fb137a7cdd7566320dab8b32635b0c1bfdd7cb8e88ae9e7fdaf8654"
+    },
+    "fencing_coach/demo.py": {
+      "bytes": 4669,
+      "sha256": "8d5c072724c974bcd8490f5b0de467080e19d78e9edb1c96e7e96cc47d90b032"
+    },
+    "fencing_coach/evaluation.py": {
+      "bytes": 4809,
+      "sha256": "a0ab7ae11d817321f9111e9811cd55056f3eb41a486b89098e7a7ef30daa0311"
+    },
+    "fencing_coach/features.py": {
+      "bytes": 7788,
+      "sha256": "e413c7909717c789c51e458aa9d2561e27b8aedf665c306a0b62c145e7c6921d"
+    },
+    "fencing_coach/geometry.py": {
+      "bytes": 3794,
+      "sha256": "e1796ba251ba9c0c336d5abb45a2d068b9e996c708e2cb64654c8f35c563f6ce"
+    },
+    "fencing_coach/pipeline.py": {
+      "bytes": 11683,
+      "sha256": "5f6b1f23130f91e02c7741c3a935ed77d6c252a975e8b843c8910d2071cd2ec2"
+    },
+    "fencing_coach/recognition.py": {
+      "bytes": 12019,
+      "sha256": "0aae2b300928fec204def053cf1341409a007843fb53c106a54154939150b6cf"
+    },
+    "fencing_coach/report.py": {
+      "bytes": 16771,
+      "sha256": "0e4dde29baf520a0f62dde09be6fec77d8eb788b82d29be499b826f7c043062d"
+    },
+    "fencing_coach/rubric.json": {
+      "bytes": 11317,
+      "sha256": "66038a205e5c12159a5dde63ea5939c84dce899159bf3082920bc2767fc2efa4"
+    },
+    "fencing_coach/schema.py": {
+      "bytes": 5572,
+      "sha256": "6084a12b502dedd530ed0d29e338112fbd62e4a5f6d70957674c7c6f4d81207a"
+    },
+    "fencing_coach/scoring.py": {
+      "bytes": 10303,
+      "sha256": "d6182bfae52bb3560f20b12632ffbf245e35f5f68a9001ffee1e08822785d594"
+    },
+    "fencing_coach/vision.py": {
+      "bytes": 5554,
+      "sha256": "026e6278132909141c55ad6788e8ed27864936a3a221f95cb3f902425450a215"
+    },
+    "models/manifest.json": {
+      "bytes": 577,
+      "sha256": "df9fc2f8d1f949a5d68d35ad31fbee176cef43a38ff3ef1eca9a7e148d0d0922"
+    },
+    "models/pose_landmarker_full.task": {
+      "bytes": 9398198,
+      "sha256": "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1"
+    },
+    "pyproject.toml": {
+      "bytes": 933,
+      "sha256": "d14f50b28a90b88118419e3c464ae100786af64fb37054c58572511120d7e47c"
+    },
+    "requirements-sword.txt": {
+      "bytes": 66,
+      "sha256": "f87e3150a4adfa9b7d2ed1615559295cf03c72b2d433e86937b5e73471d379cd"
+    },
+    "requirements.txt": {
+      "bytes": 205,
+      "sha256": "3466d29a18831180eb2f950061bfb209a4066034e94b13883ab4258a23b8ba57"
+    },
+    "start_windows.bat": {
+      "bytes": 867,
+      "sha256": "5187eda3ca78550ea6c351f02f7536a5c0652a5727a2cb2a6682f258d0974d8a"
+    },
+    "tests/test_analysis.py": {
+      "bytes": 8732,
+      "sha256": "9bdb12c1dab3839f95863c7461e146cd57032b40be9da85b193ffad888739d42"
+    },
+    "tests/test_app.py": {
+      "bytes": 658,
+      "sha256": "e1add6988bf9a76fdef0da70a20f3a33bda3338833a3aabbdcc5bebd2c25bb7f"
+    },
+    "tests/test_evaluation.py": {
+      "bytes": 2312,
+      "sha256": "e30c15c78d393bfff204d3d22f625f5f6df380234e45782b965453eca5a3a9fa"
+    },
+    "tests/test_vision_integration.py": {
+      "bytes": 2016,
+      "sha256": "7adb55826d66a35b62c1f0611d4afda5527cbe2bcc3a5312b30f906e2d7dd0ea"
+    },
+    "tools/download_pose_model.py": {
+      "bytes": 2187,
+      "sha256": "4a984c42338c0e83bca814280aec9b2802d83798fbea1b3c55567f72aeff2105"
+    },
+    "tools/evaluate.py": {
+      "bytes": 1465,
+      "sha256": "8d778331a7a56044d52a06fd81247755f61eb11c81ffb4c4b31e5bf1be9233fe"
+    },
+    "tools/generate_examples.py": {
+      "bytes": 1160,
+      "sha256": "0c067c29b98b39495fca1132c301c0393a8bd85e37589e7be745661ee9ea7545"
+    },
+    "tools/inspect_checkpoint.py": {
+      "bytes": 1567,
+      "sha256": "cd66c9a0380c5c0c0a4cc9aa99a36e35ac44c7095c88b2294048465d497983b4"
+    },
+    "validation/labels_template.csv": {
+      "bytes": 43,
+      "sha256": "fd94032d3e9ae3a6cfc6062aeeb557af585f20dd035a56bc37b873e32b6e95b7"
+    }
+  }
+}

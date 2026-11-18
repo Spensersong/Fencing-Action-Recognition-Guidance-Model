@@ -1,0 +1,17 @@
+{
+  "pose_landmarker_full.task": {
+    "sha256": "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1",
+    "bytes": 9398198,
+    "source": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task"
+  },
+  "best(1).pt": {
+    "sha256": "56822aa204bf1b2a36b4904a11c1c8d1dfa1483d4e4a7800cc4f9be55a1b34e4",
+    "bytes": 6772980,
+    "source": "Original user repository; unchanged weights",
+    "task": "segment",
+    "classes": {
+      "0": "sword"
+    },
+    "training_library_version": "8.4.60"
+  }
+}
