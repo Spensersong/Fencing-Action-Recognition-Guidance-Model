@@ -1,0 +1,7 @@
+# Run with Python 3.10-3.12. The optional sword model has a separate dependency file.
+numpy>=1.26,<2
+reportlab>=4.0,<5
+mediapipe==0.10.21
+opencv-contrib-python==4.11.0.86
+streamlit==1.49.1
+pyarrow==20.0.0

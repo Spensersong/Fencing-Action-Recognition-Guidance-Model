@@ -1,0 +1,85 @@
+{
+  "version": "prototype-1.0",
+  "status": "Reference ranges for beginner solo drills. These project settings are awaiting independent coaching validation.",
+  "sources": {
+    "FIE_LUNGE": {
+      "title": "Lunge performance and its determinants, hosted by the FIE",
+      "url": "https://static.fie.org/uploads/24/124021-LUNGE%20PERFORMANCE%20AND%20ITS%20DETERMINANTS.pdf",
+      "scope": "Description of the classical lunge used to inform the posture and timing cues."
+    },
+    "MIT_FOOTWORK": {
+      "title": "Fencing movement demonstrations from MIT OpenCourseWare PE.740",
+      "url": "https://ocw.mit.edu/courses/pe-740-fencing-spring-2007/pages/video/",
+      "scope": "Reference demonstrations for basic footwork and recovery."
+    },
+    "PROJECT": {
+      "title": "Project rubric and measurement definitions",
+      "url": "docs/METHOD.md",
+      "scope": "The ranges, points and timing limits used to score each drill."
+    }
+  },
+  "directional_cues": {
+    "lunge.front_knee.above": "For this classical drill, rehearse a short lunge, pause at the finish, and compare front-knee flexion and foot placement with your coach's reference. Increase the range only after reviewing the recorded finish.",
+    "lunge.front_knee.below": "Repeat a shorter-range lunge with a controlled finish and compare its front-leg configuration with your coach's reference. Do not force a deeper bend to pursue a numerical score.",
+    "lunge.rear_knee.below": "Rehearse en garde, a short lunge, a paused finish, and recovery. Review rear-leg extension at the pause; avoid forcing or locking the knee.",
+    "lunge.elbow.below": "For this selected classical extension drill, first practise weapon-arm extension with the feet still, then add a short lunge. Compare the measured elbow configuration at the finish. This is not a universal rule for every competitive attack.",
+    "lunge.trunk.above": "Start in guard, take a short lunge and hold the finish for two seconds. Pause the clip there and compare your torso angle with your coach's reference before lengthening the lunge.",
+    "lunge.arm_lead.below": "For this classical coordination drill, rehearse a visible arm-extension initiation followed by front-foot movement at a slow, comfortable tempo. Compare the two recorded onset times. This observation does not determine attack priority.",
+    "lunge.arm_lead.above": "Repeat the extension and short lunge as a continuous coordination drill and compare their separately observed onset times. The timing band is a project setting, not a universal competitive requirement.",
+    "step.foot_order.below": "Rehearse one slow basic step from a paused guard: front foot initiates an advance, rear foot initiates a retreat. Pause again after the following foot moves, and compare the recorded foot-onset order.",
+    "step.stance_error.above": "Perform one basic step with a pause before and after. Compare the final ankle spacing with your calibrated guard, and repeat at a shorter range if your coach intends the same guard spacing.",
+    "arm_extension.elbow.below": "For this arm-only reference drill, keep the feet still, extend the weapon arm comfortably, pause, and return to guard. Compare the recorded elbow angle with your coach-approved reference; do not force the joint."
+  },
+  "profiles": {
+    "lunge": [
+      ["front_knee", "Front knee at lunge peak", "technique", 15, "deg", [80, 120], [45, 165], "Review the observed front-leg configuration against a coach-approved classical lunge reference.", "FIE_LUNGE"],
+      ["rear_knee", "Rear knee at lunge peak", "technique", 12, "deg", [155, 180], [110, 180], "Review rear-leg extension at the indicated frame; avoid forcing or locking the joint.", "FIE_LUNGE"],
+      ["elbow", "Weapon-side elbow at peak", "technique", 10, "deg", [155, 180], [95, 180], "For this classical straight-extension drill, review arm extension with your coach.", "FIE_LUNGE"],
+      ["trunk", "Trunk inclination at peak", "technique", 8, "deg", [0, 22], [0, 55], "Review the indicated trunk inclination. The classical reference uses a relatively upright torso.", "FIE_LUNGE"],
+      ["arm_lead", "Arm onset before front-foot onset", "timing", 15, "s", [0.03, 0.35], [-0.25, 0.8], "Compare arm and front-foot movement onsets in slow motion for this classical drill. This does not determine priority.", "FIE_LUNGE"],
+      ["attack_duration", "Observed movement-onset-to-peak interval", "timing", 10, "s", [0.18, 1.5], [0, 4], "Repeat the same drill at a comfortable tempo and compare the time from the start to the peak.", "PROJECT"],
+      ["hip_range", "Vertical hip image excursion", "control", 10, "torso", [0, 0.4], [0, 0.85], "Review the observed vertical hip excursion; this image measure is not a centre-of-mass or balance measurement.", "PROJECT"],
+      ["knee_offset", "Front knee-to-ankle axial offset", "control", 10, "leg", [0, 0.22], [0, 0.65], "Compare the indicated knee and ankle positions with a coach. This rule does not diagnose loading or injury risk.", "FIE_LUNGE"],
+      ["trunk_variation", "Trunk-angle variation", "presentation", 5, "deg SD", [0, 6], [0, 22], "Watch the torso through the lunge. Check when its angle changes and whether that change is part of the drill.", "PROJECT"],
+      ["reach_efficiency", "Shoulder-relative reach path ratio", "presentation", 5, "ratio", [1, 1.25], [1, 2.5], "Review repeated reversals of the measured arm reach during extension. This does not measure sword-tip accuracy.", "PROJECT"]
+    ],
+    "step": [
+      ["front_knee_end", "Front knee at finish", "technique", 15, "deg", [95, 155], [60, 180], "Review the final front-knee configuration against your calibrated guard.", "PROJECT"],
+      ["rear_knee_end", "Rear knee at finish", "technique", 15, "deg", [95, 155], [60, 180], "Review the final rear-knee configuration against your calibrated guard.", "PROJECT"],
+      ["stance_error", "Final stance change from calibration", "technique", 10, "leg", [0, 0.12], [0, 0.45], "Check whether the feet returned to the intended guard spacing after the step.", "PROJECT"],
+      ["trunk_end", "Trunk inclination at finish", "technique", 5, "deg", [0, 22], [0, 55], "Review the indicated final trunk configuration.", "PROJECT"],
+      ["foot_order", "Following-foot onset minus leading-foot onset", "timing", 15, "s", [0.03, 0.55], [-0.3, 1.4], "In an advance, review front-foot initiation; in a retreat, review rear-foot initiation. This cue is for the selected basic drill.", "MIT_FOOTWORK"],
+      ["duration", "Observed step duration", "timing", 10, "s", [0.25, 1.8], [0, 4], "Compare repetitions of the same drill at the same intended tempo; do not chase a faster score.", "PROJECT"],
+      ["hip_range", "Vertical hip image excursion", "control", 10, "torso", [0, 0.15], [0, 0.5], "Review the observed hip image excursion while maintaining the intended stepping pattern.", "PROJECT"],
+      ["stance_min", "Minimum observed foot spacing", "control", 10, "leg", [0.25, 1.3], [0, 2], "Review foot spacing during the marked basic step. No diagnosis of balance is made.", "PROJECT"],
+      ["trunk_variation", "Trunk-angle variation", "presentation", 10, "deg SD", [0, 6], [0, 22], "Review trunk consistency across the step.", "PROJECT"]
+    ],
+    "en_garde": [
+      ["front_knee", "Median front-knee angle", "technique", 15, "deg", [95, 155], [60, 180], "Compare the observed front-leg configuration with your coach's guard reference.", "PROJECT"],
+      ["rear_knee", "Median rear-knee angle", "technique", 15, "deg", [95, 155], [60, 180], "Compare the observed rear-leg configuration with your coach's guard reference.", "PROJECT"],
+      ["trunk", "Median trunk inclination", "technique", 15, "deg", [0, 22], [0, 55], "Review the observed trunk inclination for this guard drill.", "PROJECT"],
+      ["duration", "Observed guard hold", "timing", 25, "s", [0.8, 1800], [0, 1800], "Hold the intended guard long enough to obtain a stable observation.", "PROJECT"],
+      ["foot_drift", "Largest foot image displacement", "control", 10, "torso", [0, 0.12], [0, 0.5], "Review unintended foot movement over this static guard interval.", "PROJECT"],
+      ["hip_range", "Vertical hip image excursion", "control", 10, "torso", [0, 0.12], [0, 0.5], "Review the observed vertical hip image excursion during the hold.", "PROJECT"],
+      ["trunk_variation", "Trunk-angle variation", "presentation", 10, "deg SD", [0, 5], [0, 20], "Compare trunk consistency over the observed hold.", "PROJECT"]
+    ],
+    "arm_extension": [
+      ["elbow", "Weapon-side elbow at extension peak", "technique", 20, "deg", [155, 180], [95, 180], "Review the indicated elbow extension for this straight-extension drill.", "FIE_LUNGE"],
+      ["trunk", "Trunk inclination at extension peak", "technique", 15, "deg", [0, 22], [0, 55], "Review torso inclination while extending the weapon arm.", "PROJECT"],
+      ["stance_error", "Final stance change from calibration", "technique", 10, "leg", [0, 0.12], [0, 0.45], "Review whether the intended guard spacing was retained.", "PROJECT"],
+      ["attack_duration", "Observed arm-extension duration", "timing", 25, "s", [0.15, 1.5], [0, 4], "Compare the observed extension interval across repetitions of the same drill.", "PROJECT"],
+      ["foot_drift", "Largest foot image displacement", "control", 10, "torso", [0, 0.12], [0, 0.5], "For an arm-only drill, review the measured foot displacement.", "PROJECT"],
+      ["hip_range", "Vertical hip image excursion", "control", 10, "torso", [0, 0.12], [0, 0.5], "Review the measured hip excursion during the arm-only drill.", "PROJECT"],
+      ["reach_efficiency", "Shoulder-relative reach path ratio", "presentation", 10, "ratio", [1, 1.25], [1, 2.5], "Review changes in the direction of measured arm reach; blade accuracy is unmeasured.", "PROJECT"]
+    ],
+    "recovery": [
+      ["front_knee_end", "Front knee after recovery", "technique", 15, "deg", [95, 155], [60, 180], "Compare the observed final front-knee configuration with your guard reference.", "PROJECT"],
+      ["rear_knee_end", "Rear knee after recovery", "technique", 15, "deg", [95, 155], [60, 180], "Compare the observed final rear-knee configuration with your guard reference.", "PROJECT"],
+      ["stance_error", "Final stance change from calibration", "technique", 15, "leg", [0, 0.12], [0, 0.45], "Review the final distance between the feet after returning to guard.", "PROJECT"],
+      ["duration", "Observed recovery duration", "timing", 25, "s", [0.2, 2], [0, 5], "Review recovery at a controlled, repeatable tempo rather than forcing speed.", "PROJECT"],
+      ["hip_range", "Vertical hip image excursion", "control", 10, "torso", [0, 0.4], [0, 0.85], "Review observed hip excursion during the recovery; this is not a balance test.", "PROJECT"],
+      ["final_drift", "Final guard image drift", "control", 10, "torso", [0, 0.10], [0, 0.4], "Review the final guard hold at the marked end of the recovery.", "PROJECT"],
+      ["trunk_variation", "Trunk-angle variation", "presentation", 10, "deg SD", [0, 6], [0, 22], "Watch the torso as you return to guard. Look for the part of the recovery where its angle changes most.", "PROJECT"]
+    ]
+  }
+}
